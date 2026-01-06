@@ -6,7 +6,7 @@ namespace Domain.Abstractions;
 /// <typeparam name="T"></typeparam>
 public interface IEntity<T> : IEntity
 {
-    public T id { get; set; }
+    public T Id { get; set; }
 }
 
 public interface IEntity

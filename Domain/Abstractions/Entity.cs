@@ -6,5 +6,5 @@ namespace Domain.Abstractions;
 /// <typeparam name="T"></typeparam>
 public abstract class Entity<T> : IEntity<T>
 {
-    public required T id { get; set; }
+    public required T Id { get; set; }
 }
