@@ -1,3 +1,5 @@
+using Application.Data.DataBaseContext;
+
 namespace Infrastructure;
 
 /// <summary>
@@ -20,7 +22,7 @@ public static class DependencyInjection
         {
             options.UseSqlite(connectionString);
         });
-
+        services.AddScoped<IApplicationDbContext, ApplicationDbContext>();
         return services;
 
     }
