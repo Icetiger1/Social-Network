@@ -1,16 +1,16 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Domain.ValueObjects;
+using Application.Topics.Dtos;
 
 namespace Application.Topics;
 
 public interface ITopicsService
 {
-    Task<List<Topic>> GetTopicsAsync();
-    Task<Topic> GetTopicAsync(Guid id);
-    Task<Topic> CreateTopicAsync(Topic topicRequestDto);
-    Task<Topic> UpdateTopicAsync(TopicId id, Topic topicRequestDto);
-    Task DeleteTopicAsync(TopicId id);
+    Task<List<TopicResponseDto>> GetTopicsAsync(
+        int pageNumber = 1,
+        int pageSize = 10,
+        string? searchTerm = null,
+        CancellationToken ct = default);
+    Task<TopicResponseDto> GetTopicAsync(Guid id, CancellationToken ct);
+    Task<TopicResponseDto> CreateTopicAsync(CreateTopicRequestDto topicRequestDto, CancellationToken ct);
+    Task<TopicResponseDto> UpdateTopicAsync(Guid id, UpdateTopicRequestDto topicRequestDto, CancellationToken ct);
+    Task DeleteTopicAsync(Guid id, CancellationToken ct);
 }

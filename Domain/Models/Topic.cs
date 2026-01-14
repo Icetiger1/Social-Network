@@ -1,35 +1,78 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace Domain.Models;
 
 /// <summary>
-/// Сущность темы 
+/// Тема
 /// </summary>
 public class Topic : Entity<TopicId>
 {
-    public string Title { get; set; } = default!;
-    public DateTime? EventStart { get; set; } = default!;
-    public string Summary { get; set; } = default!;
-    public string TopicType { get; set; } = default!;
-    public Location Location { get; set; } = default!;
+    private string _title;
+    private DateTime? _eventStart;
+    private string _summary;
+    private string _topicType;
+    private Location _location;
+
+    public string Title
+    {
+        get => _title;
+        private set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("Title cannot be empty");
+            _title = value;
+        }
+    }
+
+    public DateTime? EventStart
+    {
+        get => _eventStart;
+        private set => _eventStart = value;
+    }
+
+    public string Summary
+    {
+        get => _summary;
+        private set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("Summary cannot be empty");
+            _summary = value;
+        }
+    }
+
+    public string TopicType
+    {
+        get => _topicType;
+        private set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("TopicType cannot be empty");
+            _topicType = value;
+        }
+    }
+
+    public Location Location
+    {
+        get => _location;
+        private set => _location = value ?? throw new ArgumentNullException(nameof(Location));
+    }
+
+    // Приватный конструктор для EF Core
+    private Topic() { }
 
     /// <summary>
     /// Создание темы
     /// </summary>
-    /// <param name="id">идентификатор темы</param>
-    /// <param name="title">заголовок темы</param>
-    /// <param name="eventStart">дата начала события</param>
-    /// <param name="summary">краткое описание темы</param>
-    /// <param name="topicType">тип темы</param>
-    /// <param name="location">место проведения</param>
-    /// <returns></returns>
     public static Topic Create(
-        TopicId id, string title, DateTime? eventStart, 
+        TopicId id, string title, DateTime? eventStart,
         string summary, string topicType, Location location)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(title);
-        ArgumentException.ThrowIfNullOrWhiteSpace(summary);
-        ArgumentException.ThrowIfNullOrWhiteSpace(topicType);
-
-        Topic topic = new()
+        var topic = new Topic
         {
             Id = id,
             Title = title,
@@ -40,5 +83,22 @@ public class Topic : Entity<TopicId>
         };
 
         return topic;
+    }
+
+    /// <summary>
+    /// Метод для изменения состояния
+    /// </summary>
+    /// <param name="title"></param>
+    /// <param name="eventStart"></param>
+    /// <param name="summary"></param>
+    /// <param name="topicType"></param>
+    /// <param name="location"></param>
+    public void Update(string title, DateTime? eventStart, string summary, string topicType, Location location)
+    {
+        Title = title;
+        EventStart = eventStart;
+        Summary = summary;
+        TopicType = topicType;
+        Location = location;
     }
 }

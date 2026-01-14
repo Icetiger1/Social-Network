@@ -12,8 +12,12 @@ public class TopicsController(ITopicsService topicsService)
 {
 
     [HttpGet]
-    public async Task<ActionResult<List<Topic>>> GetTopics()
+    public async Task<ActionResult<List<TopicResponseDto>>> GetTopics(
+        CancellationToken ct
+    )
     {
-        return Ok(await topicsService.GetTopicsAsync());
+        return Ok(await topicsService.GetTopicsAsync(ct));
     }
+
+
 }
