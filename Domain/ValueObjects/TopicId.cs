@@ -26,4 +26,9 @@ public record TopicId
         }
         return new TopicId(value);
     }
+
+    /// <summary>
+    /// Создать новый TopicId
+    /// </summary>
+    public static TopicId New() => Of(Guid.NewGuid());
 }

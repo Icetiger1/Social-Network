@@ -1,4 +1,6 @@
+using Application.Common;
 using Application.Data.DataBaseContext;
+using Infrastructure.Common;
 
 namespace Infrastructure;
 
@@ -23,6 +25,8 @@ public static class DependencyInjection
             options.UseSqlite(connectionString);
         });
         services.AddScoped<IApplicationDbContext, ApplicationDbContext>();
+        services.AddSingleton<IDateTimeProvider, DateTimeProvider>();
+
         return services;
 
     }

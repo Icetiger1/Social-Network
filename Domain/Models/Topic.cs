@@ -17,6 +17,7 @@ public class Topic : Entity<TopicId>
     private string _topicType;
     private Location _location;
 
+
     public string Title
     {
         get => _title;
@@ -62,6 +63,11 @@ public class Topic : Entity<TopicId>
         private set => _location = value ?? throw new ArgumentNullException(nameof(Location));
     }
 
+    public DateTime CreatedAt { get; private set; }
+    public DateTime? UpdatedAt { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public bool IsDeleted => DeletedAt.HasValue;
+
     // Приватный конструктор для EF Core
     private Topic() { }
 
@@ -100,5 +106,20 @@ public class Topic : Entity<TopicId>
         Summary = summary;
         TopicType = topicType;
         Location = location;
+    }
+
+    public void SetCreationMetadata(DateTime createdAt)
+    {
+        CreatedAt = createdAt;
+    }
+
+    public void SetUpdateMetadata(DateTime updatedAt)
+    {
+        UpdatedAt = updatedAt;
+    }
+
+    public void MarkAsDeleted(DateTime deletedAt)
+    {
+        DeletedAt = deletedAt;
     }
 }

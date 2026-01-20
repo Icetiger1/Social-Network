@@ -1,4 +1,5 @@
 using Application.Topics;
+using Application.Topics.Dtos;
 using Domain.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
