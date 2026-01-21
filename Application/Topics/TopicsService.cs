@@ -1,6 +1,7 @@
 using Application.Common;
 using Application.Data.DataBaseContext;
-using Application.Topics.Dtos;
+using Application.Dtos;
+using Application.Extensions;
 using Domain.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -60,7 +61,7 @@ public class TopicsService(IApplicationDbContext dbContext,
                 .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.Id == topicId, ct);
 
-            return MapToDto(createdTopic!);
+            return createdTopic!.ToTopicResponseDto();
         }
         catch (OperationCanceledException)
         {
@@ -174,7 +175,7 @@ public class TopicsService(IApplicationDbContext dbContext,
             }
 
             logger.LogDebug("Topic with ID {Id} found", id);
-            return MapToDto(topic);
+            return topic.ToTopicResponseDto();
         }
         catch (OperationCanceledException)
         {
@@ -220,7 +221,7 @@ public class TopicsService(IApplicationDbContext dbContext,
             logger.LogInformation("Retrieved {Count} topics (includeDeleted: {IncludeDeleted})",
                 topics.Count, includeDeleted);
 
-            return topics.Select(MapToDto).ToList();
+            return topics.ToTopicResponseDtoList();
         }
         catch  (OperationCanceledException)
         {
@@ -291,7 +292,7 @@ public class TopicsService(IApplicationDbContext dbContext,
             await transaction.CommitAsync(ct);
 
             logger.LogInformation("Topic with ID {Id} updated successfully", id);
-            return MapToDto(topic);
+            return topic.ToTopicResponseDto();
         }
         catch (DomainException ex) when (ex.Message.Contains("TopicId не может быть пустым"))
         {
@@ -345,7 +346,7 @@ public class TopicsService(IApplicationDbContext dbContext,
 
             logger.LogInformation("Retrieved {Count} deleted topics", deletedTopics.Count);
 
-            return deletedTopics.Select(MapToDto).ToList();
+            return deletedTopics.ToTopicResponseDtoList();
         }
         catch (OperationCanceledException)
         {
@@ -364,25 +365,22 @@ public class TopicsService(IApplicationDbContext dbContext,
     /// </summary>
     /// <param name="topic"></param>
     /// <returns></returns>
-    private static TopicResponseDto MapToDto(Topic topic)
-    {
-        return new TopicResponseDto
-        {
-            Id = topic.Id.Value,
-            Title = topic.Title,
-            EventStart = topic.EventStart,
-            Summary = topic.Summary,
-            TopicType = topic.TopicType,
-            Location = new LocationDto
-            (
-                topic.Location.City,
-                topic.Location.Street
-            ),
-            CreatedAt = topic.CreatedAt,
-            UpdatedAt = topic.UpdatedAt,
-            DeletedAt = topic.DeletedAt
-        };
-    }
+    //private static TopicResponseDto MapToDto(Topic topic)
+    //{
+    //    return new TopicResponseDto
+    //    (
+    //        topic.Id.Value,
+    //        topic.Title,
+    //        topic.Summary,
+    //        topic.TopicType,
+    //        topic.Location.City,
+    //        topic.Location.Street,
+    //        topic.EventStart
+    //        topic.CreatedAt,
+    //        topic.UpdatedAt,
+    //        topic.DeletedAt
+    //    );
+    //}
 
     /// <summary>
     /// ¬алидаци€ запроса создани€

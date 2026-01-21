@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Application.Topics.Dtos;
+namespace Application.Dtos;
 
 public record LocationDto(
     string City,

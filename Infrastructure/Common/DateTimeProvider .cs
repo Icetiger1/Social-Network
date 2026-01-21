@@ -5,11 +5,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Infrastructure.Common
+namespace Infrastructure.Common;
+
+public class DateTimeProvider : IDateTimeProvider
 {
-    public class DateTimeProvider : IDateTimeProvider
-    {
-        public DateTime UtcNow => DateTime.UtcNow;
-        public DateTime Now => DateTime.Now;
-    }
+    public DateTime UtcNow => DateTime.UtcNow;
+    public DateTime Now => DateTime.Now;
 }

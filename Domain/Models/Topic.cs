@@ -67,7 +67,7 @@ public class Topic : Entity<TopicId>
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public DateTime? DeletedAt { get; private set; }
-
+ 
 
     // Приватный конструктор для EF Core
     private Topic() { }

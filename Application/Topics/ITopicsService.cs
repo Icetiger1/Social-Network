@@ -1,4 +1,4 @@
-using Application.Topics.Dtos;
+using Application.Dtos;
 
 namespace Application.Topics;
 

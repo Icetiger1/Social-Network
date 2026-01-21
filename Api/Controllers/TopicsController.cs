@@ -1,5 +1,6 @@
+using Application.Dtos;
 using Application.Topics;
-using Application.Topics.Dtos;
+using Domain.Exceptions;
 using Domain.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -13,12 +14,220 @@ public class TopicsController(ITopicsService topicsService)
 {
 
     [HttpGet]
+    [ProducesResponseType(typeof(List<TopicResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<List<TopicResponseDto>>> GetTopics(
-        CancellationToken ct
-    )
+        [FromQuery] bool includeDeleted = false,
+        CancellationToken ct = default)
     {
-        return Ok(await topicsService.GetTopicsAsync(true, ct));
+        try
+        {
+            //logger.LogDebug("Getting all active topics");
+
+            var result = await topicsService.GetTopicsAsync(includeDeleted, ct);
+            return Ok(result);
+        }
+        catch (OperationCanceledException)
+        {
+            //logger.LogInformation("GetTopics request was cancelled");
+
+            return StatusCode(499); // Client Closed Request
+        }
+        catch (Exception ex)
+        {
+            //logger.LogError(ex, "Error occurred while getting topics");
+
+            return Problem(
+                title: "Failed to retrieve topics",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
     }
 
+    /// <summary>
+    /// Получить тему по ID
+    /// </summary>
+    /// <param name="id">Идентификатор темы</param>
+    /// <param name="ct">Токен отмены</param>
+    /// <returns>Тема</returns>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(typeof(TopicResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<TopicResponseDto>> GetTopic(
+        Guid id,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            //logger.LogDebug("Getting topic with ID: {Id}", id);
 
+            var result = await topicsService.GetTopicAsync(id, ct);
+            return Ok(result);
+        }
+        catch (NotFoundException ex)
+        {
+            //logger.LogWarning("Topic with ID {Id} not found", id);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (OperationCanceledException)
+        {
+            //logger.LogInformation("GetTopic request was cancelled for ID: {Id}", id);
+            return StatusCode(499);
+        }
+        catch (Exception ex)
+        {
+            //logger.LogError(ex, "Error occurred while getting topic with ID: {Id}", id);
+            return Problem(
+                title: "Failed to retrieve topic",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
+    /// Создать новую тему
+    /// </summary>
+    /// <param name="request">Данные для создания темы</param>
+    /// <param name="ct">Токен отмены</param>
+    /// <returns>Созданная тема</returns>
+    [HttpPost]
+    [ProducesResponseType(typeof(TopicResponseDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<TopicResponseDto>> CreateTopic(
+        [FromBody] CreateTopicRequestDto request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            //logger.LogDebug("Creating new topic with title: {Title}", request.Title);
+
+            if (!ModelState.IsValid)
+            {
+                //logger.LogWarning("Invalid model state for topic creation");
+                return ValidationProblem(ModelState);
+            }
+
+            var result = await topicsService.CreateTopicAsync(request, ct);
+
+            return CreatedAtAction(
+                nameof(GetTopic),
+                new { id = result.Id },
+                result);
+        }
+        catch (DomainException ex)
+        {
+            //logger.LogWarning("Domain validation failed for topic creation: {Message}", ex.Message);
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (OperationCanceledException)
+        {
+            //logger.LogInformation("CreateTopic request was cancelled");
+            return StatusCode(499);
+        }
+        catch (Exception ex)
+        {
+            //logger.LogError(ex, "Error occurred while creating topic");
+            return Problem(
+                title: "Failed to create topic",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
+    /// Обновить существующую тему
+    /// </summary>
+    /// <param name="id">Идентификатор темы</param>
+    /// <param name="request">Данные для обновления</param>
+    /// <param name="ct">Токен отмены</param>
+    /// <returns>Обновленная тема</returns>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(typeof(TopicResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<TopicResponseDto>> UpdateTopic(
+        Guid id,
+        [FromBody] UpdateTopicRequestDto request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            //logger.LogDebug("Updating topic with ID: {Id}", id);
+
+            if (!ModelState.IsValid)
+            {
+                //logger.LogWarning("Invalid model state for topic update");
+                return ValidationProblem(ModelState);
+            }
+
+            var result = await topicsService.UpdateTopicAsync(id, request, ct);
+            return Ok(result);
+        }
+        catch (NotFoundException ex)
+        {
+            //logger.LogWarning("Topic with ID {Id} not found for update", id);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (DomainException ex)
+        {
+            //logger.LogWarning("Domain validation failed for topic update: {Message}", ex.Message);
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (OperationCanceledException)
+        {
+            //logger.LogInformation("UpdateTopic request was cancelled for ID: {Id}", id);
+            return StatusCode(499);
+        }
+        catch (Exception ex)
+        {
+            //logger.LogError(ex, "Error occurred while updating topic with ID: {Id}", id);
+            return Problem(
+                title: "Failed to update topic",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    /// <summary>
+    /// Удалить тему
+    /// </summary>
+    /// <param name="id">Идентификатор темы</param>
+    /// <param name="ct">Токен отмены</param>
+    /// <returns>No Content</returns>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> DeleteTopic(
+        Guid id,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            //logger.LogDebug("Deleting topic with ID: {Id}", id);
+            await topicsService.DeleteTopicAsync(id, ct);
+            return NoContent();
+        }
+        catch (NotFoundException ex)
+        {
+            //logger.LogWarning("Topic with ID {Id} not found for deletion", id);
+            return NotFound(new { error = ex.Message });
+        }
+        catch (OperationCanceledException)
+        {
+            //logger.LogInformation("DeleteTopic request was cancelled for ID: {Id}", id);
+            return StatusCode(499);
+        }
+        catch (Exception ex)
+        {
+            //logger.LogError(ex, "Error occurred while deleting topic with ID: {Id}", id);
+            return Problem(
+                title: "Failed to delete topic",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
 }
