@@ -16,6 +16,9 @@ public class TopicResponseDto
     public string Summary { get; init; } = default!;
     public string TopicType { get; init; } = default!;
     public LocationDto Location { get; init; } = default!;
-    public DateTime CreatedAt { get; init; } // Дополнительные поля, которых нет в запросе
+    public DateTime CreatedAt { get; init; }
     public DateTime? UpdatedAt { get; init; }
+    public DateTime? DeletedAt { get; init; }
+
+    public bool IsDeleted => DeletedAt.HasValue;
 }

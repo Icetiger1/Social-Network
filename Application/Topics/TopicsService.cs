@@ -2,6 +2,7 @@ using Application.Common;
 using Application.Data.DataBaseContext;
 using Application.Topics.Dtos;
 using Domain.Exceptions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Topics;
@@ -34,8 +35,8 @@ public class TopicsService(IApplicationDbContext dbContext,
                 topicRequestDto.Location.City,
                 topicRequestDto.Location.Street);
 
-            // Создаем TopicId (нужно добавить метод New() в TopicId или генерировать Guid здесь)
-            var topicId = TopicId.Of(Guid.NewGuid()); // Или TopicId.New() если добавите метод
+            // Создаем TopicId 
+            var topicId = TopicId.New(); 
 
             // Создаем доменную сущность
             var topic = Topic.Create(
@@ -45,9 +46,6 @@ public class TopicsService(IApplicationDbContext dbContext,
                 topicRequestDto.Summary,
                 topicRequestDto.TopicType,
                 location);
-
-            // Устанавливаем метаданные создания
-            topic.SetCreationMetadata(dateTimeProvider.UtcNow);
 
             // Добавляем в контекст
             await dbContext.Topics.AddAsync(topic, ct);
@@ -104,7 +102,7 @@ public class TopicsService(IApplicationDbContext dbContext,
 
             // Получаем сущность для удаления
             var topic = await dbContext.Topics
-                .FirstOrDefaultAsync(t => t.Id == topicId && !t.IsDeleted, ct);
+                .FirstOrDefaultAsync(t => t.Id == topicId, ct);
 
             if (topic == null)
             {
@@ -113,7 +111,7 @@ public class TopicsService(IApplicationDbContext dbContext,
             }
 
             // Мягкое удаление
-            topic.MarkAsDeleted(dateTimeProvider.UtcNow);
+            topic.MarkAsDeleted();
 
             // Помечаем как измененную
             dbContext.Topics.Update(topic);
@@ -200,16 +198,27 @@ public class TopicsService(IApplicationDbContext dbContext,
     /// <param name="ct"></param>
     /// <returns></returns>
     public async Task<List<TopicResponseDto>> GetTopicsAsync(
-        CancellationToken ct = default)
+        bool includeDeleted, CancellationToken ct = default)
     {
         try
         {
             logger.LogDebug("Getting all topics");
+            var query = dbContext.Topics
+                .Include(t => t.Location)
+                .AsNoTracking();
 
-            var topics = await dbContext.Topics
+            // Если не включаем удаленные - применяем фильтр
+            if (!includeDeleted)
+            {
+                query = query.Where(t => t.DeletedAt == null);
+            }
+
+            var topics = await query
                 .OrderByDescending(t => t.CreatedAt)
-                .AsNoTracking()
                 .ToListAsync(ct);
+
+            logger.LogInformation("Retrieved {Count} topics (includeDeleted: {IncludeDeleted})",
+                topics.Count, includeDeleted);
 
             return topics.Select(MapToDto).ToList();
         }
@@ -253,7 +262,7 @@ public class TopicsService(IApplicationDbContext dbContext,
             // Получаем сущность для изменения
             var topic = await dbContext.Topics
                 .Include(t => t.Location)
-                .FirstOrDefaultAsync(t => t.Id == topicId && !t.IsDeleted, ct);
+                .FirstOrDefaultAsync(t => t.Id == topicId, ct);
 
             if (topic == null)
             {
@@ -273,9 +282,6 @@ public class TopicsService(IApplicationDbContext dbContext,
                 topicRequestDto.Summary,
                 topicRequestDto.TopicType,
                 location);
-
-            // Устанавливаем метаданные обновления
-            topic.SetUpdateMetadata(dateTimeProvider.UtcNow);
 
             // Помечаем сущность как измененную
             dbContext.Topics.Update(topic);
@@ -318,7 +324,46 @@ public class TopicsService(IApplicationDbContext dbContext,
         }
     }
 
-    // Ручной маппинг топика
+    /// <summary>
+    /// получение удаленных топиков
+    /// </summary>
+    /// <param name="ct"></param>
+    /// <returns></returns>
+    /// <exception cref="ApplicationException"></exception>
+    public async Task<List<TopicResponseDto>> GetDeletedTopicsAsync(CancellationToken ct)
+    {
+        try
+        {
+            logger.LogDebug("Getting deleted topics");
+
+            var deletedTopics = await dbContext.Topics
+                .Include(t => t.Location)
+                .Where(t => t.DeletedAt != null) 
+                .OrderByDescending(t => t.CreatedAt)
+                .AsNoTracking()
+                .ToListAsync(ct);
+
+            logger.LogInformation("Retrieved {Count} deleted topics", deletedTopics.Count);
+
+            return deletedTopics.Select(MapToDto).ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            logger.LogInformation("GetDeletedTopicsAsync operation was cancelled");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error occurred while getting deleted topics");
+            throw new ApplicationException("Failed to retrieve deleted topics", ex);
+        }
+    }
+
+    /// <summary>
+    /// Ручной маппинг топика
+    /// </summary>
+    /// <param name="topic"></param>
+    /// <returns></returns>
     private static TopicResponseDto MapToDto(Topic topic)
     {
         return new TopicResponseDto
@@ -332,7 +377,10 @@ public class TopicsService(IApplicationDbContext dbContext,
             (
                 topic.Location.City,
                 topic.Location.Street
-            )
+            ),
+            CreatedAt = topic.CreatedAt,
+            UpdatedAt = topic.UpdatedAt,
+            DeletedAt = topic.DeletedAt
         };
     }
 
@@ -389,4 +437,5 @@ public class TopicsService(IApplicationDbContext dbContext,
         if (string.IsNullOrWhiteSpace(request.Location.Street))
             throw new DomainException("Street is required");
     }
+
 }

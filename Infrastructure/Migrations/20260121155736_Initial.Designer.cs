@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260114083533_Initial")]
+    [Migration("20260121155736_Initial")]
     partial class Initial
     {
         /// <inheritdoc />
@@ -25,22 +25,38 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime?>("EventStart")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Summary")
                         .IsRequired()
+                        .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
                         .IsRequired()
+                        .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("TopicType")
                         .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DeletedAt");
 
                     b.ToTable("Topics");
                 });
@@ -54,11 +70,13 @@ namespace Infrastructure.Migrations
 
                             b1.Property<string>("City")
                                 .IsRequired()
+                                .HasMaxLength(100)
                                 .HasColumnType("TEXT")
                                 .HasColumnName("City");
 
                             b1.Property<string>("Street")
                                 .IsRequired()
+                                .HasMaxLength(200)
                                 .HasColumnType("TEXT")
                                 .HasColumnName("Street");
 

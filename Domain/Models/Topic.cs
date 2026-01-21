@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -66,7 +67,7 @@ public class Topic : Entity<TopicId>
     public DateTime CreatedAt { get; private set; }
     public DateTime? UpdatedAt { get; private set; }
     public DateTime? DeletedAt { get; private set; }
-    public bool IsDeleted => DeletedAt.HasValue;
+
 
     // Приватный конструктор для EF Core
     private Topic() { }
@@ -85,7 +86,8 @@ public class Topic : Entity<TopicId>
             EventStart = eventStart,
             Summary = summary,
             TopicType = topicType,
-            Location = location
+            Location = location,
+            CreatedAt = DateTime.UtcNow
         };
 
         return topic;
@@ -106,20 +108,11 @@ public class Topic : Entity<TopicId>
         Summary = summary;
         TopicType = topicType;
         Location = location;
+        UpdatedAt = DateTime.UtcNow;
     }
 
-    public void SetCreationMetadata(DateTime createdAt)
+    public void MarkAsDeleted()
     {
-        CreatedAt = createdAt;
-    }
-
-    public void SetUpdateMetadata(DateTime updatedAt)
-    {
-        UpdatedAt = updatedAt;
-    }
-
-    public void MarkAsDeleted(DateTime deletedAt)
-    {
-        DeletedAt = deletedAt;
+        DeletedAt = DateTime.UtcNow; 
     }
 }

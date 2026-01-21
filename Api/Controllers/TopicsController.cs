@@ -17,7 +17,7 @@ public class TopicsController(ITopicsService topicsService)
         CancellationToken ct
     )
     {
-        return Ok(await topicsService.GetTopicsAsync(ct));
+        return Ok(await topicsService.GetTopicsAsync(true, ct));
     }
 
 
