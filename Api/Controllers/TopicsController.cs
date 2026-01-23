@@ -4,6 +4,7 @@ using Domain.Exceptions;
 using Domain.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Shared;
 
 namespace API.Controllers;
 
@@ -14,17 +15,33 @@ public class TopicsController(ITopicsService topicsService)
 {
 
     [HttpGet]
-    [ProducesResponseType(typeof(List<TopicResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PaginatedList<TopicResponseDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<List<TopicResponseDto>>> GetTopics(
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? search = null,
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
         try
         {
             //logger.LogDebug("Getting all active topics");
+            // Валидация параметров
+            if (pageNumber < 1)
+            {
+                ModelState.AddModelError(nameof(pageNumber), "Page number must be greater than 0");
+                return ValidationProblem(ModelState);
+            }
 
-            var result = await topicsService.GetTopicsAsync(includeDeleted, ct);
+            if (pageSize < 1 || pageSize > 100)
+            {
+                ModelState.AddModelError(nameof(pageSize), "Page size must be between 1 and 100");
+                return ValidationProblem(ModelState);
+            }
+
+            var result = await topicsService.GetTopicsAsync(pageNumber, pageSize, search, includeDeleted, ct);
             return Ok(result);
         }
         catch (OperationCanceledException)

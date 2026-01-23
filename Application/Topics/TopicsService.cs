@@ -5,6 +5,7 @@ using Application.Extensions;
 using Domain.Exceptions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Shared;
 
 namespace Application.Topics;
 
@@ -198,12 +199,22 @@ public class TopicsService(IApplicationDbContext dbContext,
     /// </summary>
     /// <param name="ct"></param>
     /// <returns></returns>
-    public async Task<List<TopicResponseDto>> GetTopicsAsync(
-        bool includeDeleted, CancellationToken ct = default)
+    public async Task<PaginatedList<TopicResponseDto>> GetTopicsAsync(
+        int pageNumber = 1,
+        int pageSize = 10,
+        string? searchTerm = null,
+        bool includeDeleted = false, 
+        CancellationToken ct = default)
     {
         try
         {
-            logger.LogDebug("Getting all topics");
+            logger.LogDebug("Getting topics. Page: {Page}, Size: {Size}, Search: {Search}",
+            pageNumber, pageSize, searchTerm);
+
+            // 1. Валидация параметров
+            if (pageNumber < 1) pageNumber = 1;
+            if (pageSize < 1 || pageSize > 100) pageSize = 10;
+
             var query = dbContext.Topics
                 .Include(t => t.Location)
                 .AsNoTracking();
@@ -214,14 +225,30 @@ public class TopicsService(IApplicationDbContext dbContext,
                 query = query.Where(t => t.DeletedAt == null);
             }
 
-            var topics = await query
+            // 3. Применяем поиск если есть
+            if (!string.IsNullOrWhiteSpace(searchTerm))
+            {
+                var searchTermNormalized = searchTerm.Trim().ToLower();
+                query = query.Where(t =>
+                    t.Title.ToLower().Contains(searchTermNormalized) ||
+                    t.Summary.ToLower().Contains(searchTermNormalized));
+            }
+
+            // 4. Получаем ОБЩЕЕ КОЛИЧЕСТВО записей (для пагинации)
+            var totalCount = await query.CountAsync(ct);
+
+            // 5. Применяем пагинацию (Skip и Take)
+            var items = await query
                 .OrderByDescending(t => t.CreatedAt)
+                .Skip((pageNumber - 1) * pageSize) // Пропускаем предыдущие страницы
+                .Take(pageSize)                    // Берем только нужное количество
+                .Select(t => t.ToTopicResponseDto())          // Проецируем в DTO
                 .ToListAsync(ct);
 
-            logger.LogInformation("Retrieved {Count} topics (includeDeleted: {IncludeDeleted})",
-                topics.Count, includeDeleted);
+            logger.LogInformation("Retrieved {Count} topics out of {Total}, (includeDeleted: {IncludeDeleted})",
+                items.Count, totalCount, includeDeleted);
 
-            return topics.ToTopicResponseDtoList();
+            return new PaginatedList<TopicResponseDto>(items, totalCount, pageNumber, pageSize);
         }
         catch  (OperationCanceledException)
         {
