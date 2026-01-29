@@ -21,44 +21,24 @@ public class TopicsController(ITopicsService topicsService)
     public async Task<ActionResult<List<TopicResponseDto>>> GetTopics(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
-        [FromQuery] string? search = null,
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
-        try
+        // Валидация параметров
+        if (pageNumber < 1)
         {
-            //logger.LogDebug("Getting all active topics");
-            // Валидация параметров
-            if (pageNumber < 1)
-            {
-                ModelState.AddModelError(nameof(pageNumber), "Page number must be greater than 0");
-                return ValidationProblem(ModelState);
-            }
-
-            if (pageSize < 1 || pageSize > 100)
-            {
-                ModelState.AddModelError(nameof(pageSize), "Page size must be between 1 and 100");
-                return ValidationProblem(ModelState);
-            }
-
-            var result = await topicsService.GetTopicsAsync(pageNumber, pageSize, search, includeDeleted, ct);
-            return Ok(result);
+            ModelState.AddModelError(nameof(pageNumber), "Page number must be greater than 0");
+            return ValidationProblem(ModelState);
         }
-        catch (OperationCanceledException)
+
+        if (pageSize < 1 || pageSize > 100)
         {
-            //logger.LogInformation("GetTopics request was cancelled");
-
-            return StatusCode(499); // Client Closed Request
+            ModelState.AddModelError(nameof(pageSize), "Page size must be between 1 and 100");
+            return ValidationProblem(ModelState);
         }
-        catch (Exception ex)
-        {
-            //logger.LogError(ex, "Error occurred while getting topics");
 
-            return Problem(
-                title: "Failed to retrieve topics",
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
+        var result = await topicsService.GetTopicsAsync(pageNumber, pageSize, includeDeleted, ct);
+        return Ok(result);
     }
 
     /// <summary>
@@ -75,31 +55,8 @@ public class TopicsController(ITopicsService topicsService)
         Guid id,
         CancellationToken ct = default)
     {
-        try
-        {
-            //logger.LogDebug("Getting topic with ID: {Id}", id);
-
-            var result = await topicsService.GetTopicAsync(id, ct);
-            return Ok(result);
-        }
-        catch (NotFoundException ex)
-        {
-            //logger.LogWarning("Topic with ID {Id} not found", id);
-            return NotFound(new { error = ex.Message });
-        }
-        catch (OperationCanceledException)
-        {
-            //logger.LogInformation("GetTopic request was cancelled for ID: {Id}", id);
-            return StatusCode(499);
-        }
-        catch (Exception ex)
-        {
-            //logger.LogError(ex, "Error occurred while getting topic with ID: {Id}", id);
-            return Problem(
-                title: "Failed to retrieve topic",
-                detail: ex.Message,
-                statusCode: StatusCodes.Status500InternalServerError);
-        }
+        var result = await topicsService.GetTopicAsync(id, ct);
+        return Ok(result);
     }
 
     /// <summary>
@@ -118,11 +75,8 @@ public class TopicsController(ITopicsService topicsService)
     {
         try
         {
-            //logger.LogDebug("Creating new topic with title: {Title}", request.Title);
-
             if (!ModelState.IsValid)
             {
-                //logger.LogWarning("Invalid model state for topic creation");
                 return ValidationProblem(ModelState);
             }
 
@@ -135,17 +89,14 @@ public class TopicsController(ITopicsService topicsService)
         }
         catch (DomainException ex)
         {
-            //logger.LogWarning("Domain validation failed for topic creation: {Message}", ex.Message);
             return BadRequest(new { error = ex.Message });
         }
         catch (OperationCanceledException)
         {
-            //logger.LogInformation("CreateTopic request was cancelled");
             return StatusCode(499);
         }
         catch (Exception ex)
         {
-            //logger.LogError(ex, "Error occurred while creating topic");
             return Problem(
                 title: "Failed to create topic",
                 detail: ex.Message,
@@ -172,11 +123,8 @@ public class TopicsController(ITopicsService topicsService)
     {
         try
         {
-            //logger.LogDebug("Updating topic with ID: {Id}", id);
-
             if (!ModelState.IsValid)
             {
-                //logger.LogWarning("Invalid model state for topic update");
                 return ValidationProblem(ModelState);
             }
 
@@ -185,22 +133,18 @@ public class TopicsController(ITopicsService topicsService)
         }
         catch (NotFoundException ex)
         {
-            //logger.LogWarning("Topic with ID {Id} not found for update", id);
             return NotFound(new { error = ex.Message });
         }
         catch (DomainException ex)
         {
-            //logger.LogWarning("Domain validation failed for topic update: {Message}", ex.Message);
             return BadRequest(new { error = ex.Message });
         }
         catch (OperationCanceledException)
         {
-            //logger.LogInformation("UpdateTopic request was cancelled for ID: {Id}", id);
             return StatusCode(499);
         }
         catch (Exception ex)
         {
-            //logger.LogError(ex, "Error occurred while updating topic with ID: {Id}", id);
             return Problem(
                 title: "Failed to update topic",
                 detail: ex.Message,
@@ -224,23 +168,19 @@ public class TopicsController(ITopicsService topicsService)
     {
         try
         {
-            //logger.LogDebug("Deleting topic with ID: {Id}", id);
             await topicsService.DeleteTopicAsync(id, ct);
             return NoContent();
         }
         catch (NotFoundException ex)
         {
-            //logger.LogWarning("Topic with ID {Id} not found for deletion", id);
             return NotFound(new { error = ex.Message });
         }
         catch (OperationCanceledException)
         {
-            //logger.LogInformation("DeleteTopic request was cancelled for ID: {Id}", id);
             return StatusCode(499);
         }
         catch (Exception ex)
         {
-            //logger.LogError(ex, "Error occurred while deleting topic with ID: {Id}", id);
             return Problem(
                 title: "Failed to delete topic",
                 detail: ex.Message,

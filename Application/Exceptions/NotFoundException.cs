@@ -15,14 +15,4 @@ public class NotFoundException : Exception
     public NotFoundException(string message, Exception innerException)
         : base(message, innerException) { }
 
-    // Можно добавить дополнительные свойства
-    public string? ResourceName { get; }
-    public object? ResourceId { get; }
-
-    public NotFoundException(string resourceName, object resourceId)
-        : base($"Resource '{resourceName}' with identifier '{resourceId}' was not found.")
-    {
-        ResourceName = resourceName;
-        ResourceId = resourceId;
-    }
 }

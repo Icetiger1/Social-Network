@@ -7,8 +7,7 @@ public interface ITopicsService
 {
     Task<PaginatedList<TopicResponseDto>> GetTopicsAsync(
         int pageNumber = 1,
-        int pageSize = 10,
-        string? searchTerm = null, 
+        int pageSize = 10, 
         bool includeDeleted = false, 
         CancellationToken ct = default
     );

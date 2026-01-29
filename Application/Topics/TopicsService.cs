@@ -161,8 +161,6 @@ public class TopicsService(IApplicationDbContext dbContext,
     {
         try
         {
-            logger.LogDebug("Getting topic with ID: {Id}", id);
-
             var topicId = TopicId.Of(id);
             var topic = await dbContext.Topics
                 .Include(t => t.Location)
@@ -171,25 +169,21 @@ public class TopicsService(IApplicationDbContext dbContext,
 
             if (topic == null)
             {
-                logger.LogWarning("Topic with ID {Id} not found", id);
-                throw new NotFoundException($"Topic with ID {id} not found");
+                throw new TopicNotFoundException(id);
             }
 
-            logger.LogDebug("Topic with ID {Id} found", id);
             return topic.ToTopicResponseDto();
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("GetTopicAsync operation was cancelled for ID: {Id}", id);
             throw;
         }
-        catch (NotFoundException)
+        catch (TopicNotFoundException)
         {
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error occurred while getting topic with ID: {Id}", id);
             throw new ApplicationException($"Failed to retrieve topic with ID {id}", ex);
         }
     }
@@ -202,42 +196,28 @@ public class TopicsService(IApplicationDbContext dbContext,
     public async Task<PaginatedList<TopicResponseDto>> GetTopicsAsync(
         int pageNumber = 1,
         int pageSize = 10,
-        string? searchTerm = null,
         bool includeDeleted = false, 
         CancellationToken ct = default)
     {
         try
         {
-            logger.LogDebug("Getting topics. Page: {Page}, Size: {Size}, Search: {Search}",
-            pageNumber, pageSize, searchTerm);
+            logger.LogInformation("Getting topics. Page: {Page}, Size: {Size}",
+            pageNumber, pageSize);
 
-            // 1. Валидация параметров
+            // Валидация параметров
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
             var query = dbContext.Topics
                 .Include(t => t.Location)
+                .Where(t => t.DeletedAt == null)
                 .AsNoTracking();
 
-            // Если не включаем удаленные - применяем фильтр
-            if (!includeDeleted)
-            {
-                query = query.Where(t => t.DeletedAt == null);
-            }
 
-            // 3. Применяем поиск если есть
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-            {
-                var searchTermNormalized = searchTerm.Trim().ToLower();
-                query = query.Where(t =>
-                    t.Title.ToLower().Contains(searchTermNormalized) ||
-                    t.Summary.ToLower().Contains(searchTermNormalized));
-            }
-
-            // 4. Получаем ОБЩЕЕ КОЛИЧЕСТВО записей (для пагинации)
+            // Получаем ОБЩЕЕ КОЛИЧЕСТВО записей (для пагинации)
             var totalCount = await query.CountAsync(ct);
 
-            // 5. Применяем пагинацию (Skip и Take)
+            // Применяем пагинацию (Skip и Take)
             var items = await query
                 .OrderByDescending(t => t.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize) // Пропускаем предыдущие страницы

@@ -1,3 +1,6 @@
+using Api.Exceptions.Handler;
+using static System.Net.Mime.MediaTypeNames;
+
 namespace Api;
 
 /// <summary>
@@ -9,6 +12,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddExceptionHandler<CustomExceptionHandler>();
         services.AddControllers();
         services.AddOpenApi();
 
@@ -26,6 +30,8 @@ public static class DependencyInjection
         {
             app.MapOpenApi();
         }
+
+        app.UseExceptionHandler(options => { });
 
         app.UseHttpsRedirection();
 
