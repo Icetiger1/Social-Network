@@ -70,7 +70,7 @@ public class TopicsController(ITopicsService topicsService)
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<TopicResponseDto>> CreateTopic(
-        [FromBody] CreateTopicRequestDto request,
+        [FromBody] CreateTopicDto dto,
         CancellationToken ct = default)
     {
         try
@@ -80,12 +80,14 @@ public class TopicsController(ITopicsService topicsService)
                 return ValidationProblem(ModelState);
             }
 
-            var result = await topicsService.CreateTopicAsync(request, ct);
+            var result = await topicsService.CreateTopicAsync(dto, ct);
 
-            return CreatedAtAction(
-                nameof(GetTopic),
-                new { id = result.Id },
-                result);
+            return Ok(result);
+
+            //return CreatedAtAction(
+            //    nameof(GetTopic),
+            //    new { id = result.Id },
+            //    result);
         }
         catch (DomainException ex)
         {
@@ -118,7 +120,7 @@ public class TopicsController(ITopicsService topicsService)
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<TopicResponseDto>> UpdateTopic(
         Guid id,
-        [FromBody] UpdateTopicRequestDto request,
+        [FromBody] UpdateTopicDto dto,
         CancellationToken ct = default)
     {
         try
@@ -128,7 +130,7 @@ public class TopicsController(ITopicsService topicsService)
                 return ValidationProblem(ModelState);
             }
 
-            var result = await topicsService.UpdateTopicAsync(id, request, ct);
+            var result = await topicsService.UpdateTopicAsync(id, dto, ct);
             return Ok(result);
         }
         catch (NotFoundException ex)

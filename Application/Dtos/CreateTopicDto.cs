@@ -6,10 +6,11 @@ using System.Threading.Tasks;
 
 namespace Application.Dtos;
 
-public record UpdateTopicRequestDto(
+// Record для запроса создания - иммутабельный
+public record CreateTopicDto(
     string Title,
-    DateTime? EventStart,
     string Summary,
     string TopicType,
-    LocationDto Location
+    LocationDto Location,
+    DateTime? EventStart
 );

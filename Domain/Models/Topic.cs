@@ -103,11 +103,11 @@ public class Topic : Entity<TopicId>
     /// <param name="location"></param>
     public void Update(string title, DateTime? eventStart, string summary, string topicType, Location location)
     {
-        Title = title;
-        EventStart = eventStart;
-        Summary = summary;
-        TopicType = topicType;
-        Location = location;
+        Title = title ?? Title;
+        EventStart = eventStart ?? EventStart;
+        Summary = summary ?? Summary;
+        TopicType = topicType ?? TopicType;
+        Location = location ?? Location;
         UpdatedAt = DateTime.UtcNow;
     }
 

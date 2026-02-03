@@ -21,7 +21,7 @@ public class TopicsService(IApplicationDbContext dbContext,
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
     public async Task<TopicResponseDto> CreateTopicAsync(
-        CreateTopicRequestDto topicRequestDto, CancellationToken ct)
+        CreateTopicDto topicRequestDto, CancellationToken ct)
     {
         using var transaction = await dbContext.BeginTransactionAsync(ct);
 
@@ -29,19 +29,15 @@ public class TopicsService(IApplicationDbContext dbContext,
         {
             logger.LogDebug("Creating new topic with title: {Title}", topicRequestDto.Title);
 
-            // Валидация входных данных
             ValidateCreateRequest(topicRequestDto);
 
-            // Создаем Location из DTO
-            var location = Location.Of(
+            Location location = Location.Of(
                 topicRequestDto.Location.City,
                 topicRequestDto.Location.Street);
 
-            // Создаем TopicId 
-            var topicId = TopicId.New(); 
+            TopicId topicId = TopicId.New();
 
-            // Создаем доменную сущность
-            var topic = Topic.Create(
+            Topic newTopic = Topic.Create(
                 topicId,
                 topicRequestDto.Title,
                 topicRequestDto.EventStart,
@@ -49,20 +45,13 @@ public class TopicsService(IApplicationDbContext dbContext,
                 topicRequestDto.TopicType,
                 location);
 
-            // Добавляем в контекст
-            await dbContext.Topics.AddAsync(topic, ct);
+            await dbContext.Topics.AddAsync(newTopic, ct);
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
             logger.LogInformation("Topic created successfully with ID: {Id}", topicId.Value);
 
-            // Получаем созданную тему с включенным Location для возврата
-            var createdTopic = await dbContext.Topics
-                .Include(t => t.Location)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(t => t.Id == topicId, ct);
-
-            return createdTopic!.ToTopicResponseDto();
+            return newTopic.ToTopicResponseDto();
         }
         catch (OperationCanceledException)
         {
@@ -99,10 +88,8 @@ public class TopicsService(IApplicationDbContext dbContext,
         {
             logger.LogDebug("Deleting topic with ID: {Id}", id);
 
-            // Создаем TopicId из Guid
-            var topicId = TopicId.Of(id);
+            TopicId topicId = TopicId.Of(id);
 
-            // Получаем сущность для удаления
             var topic = await dbContext.Topics
                 .FirstOrDefaultAsync(t => t.Id == topicId, ct);
 
@@ -112,13 +99,9 @@ public class TopicsService(IApplicationDbContext dbContext,
                 throw new NotFoundException($"Topic with ID {id} not found");
             }
 
-            // Мягкое удаление
             topic.MarkAsDeleted();
 
-            // Помечаем как измененную
             dbContext.Topics.Update(topic);
-
-            // Сохраняем изменения
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
@@ -161,7 +144,7 @@ public class TopicsService(IApplicationDbContext dbContext,
     {
         try
         {
-            var topicId = TopicId.Of(id);
+            TopicId topicId = TopicId.Of(id);
             var topic = await dbContext.Topics
                 .Include(t => t.Location)
                 .AsNoTracking()
@@ -204,7 +187,6 @@ public class TopicsService(IApplicationDbContext dbContext,
             logger.LogInformation("Getting topics. Page: {Page}, Size: {Size}",
             pageNumber, pageSize);
 
-            // Валидация параметров
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
@@ -213,11 +195,8 @@ public class TopicsService(IApplicationDbContext dbContext,
                 .Where(t => t.DeletedAt == null)
                 .AsNoTracking();
 
-
-            // Получаем ОБЩЕЕ КОЛИЧЕСТВО записей (для пагинации)
             var totalCount = await query.CountAsync(ct);
 
-            // Применяем пагинацию (Skip и Take)
             var items = await query
                 .OrderByDescending(t => t.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize) // Пропускаем предыдущие страницы
@@ -252,7 +231,7 @@ public class TopicsService(IApplicationDbContext dbContext,
     /// <exception cref="NotImplementedException"></exception>
     public async Task<TopicResponseDto> UpdateTopicAsync(
         Guid id, 
-        UpdateTopicRequestDto topicRequestDto, 
+        UpdateTopicDto dto, 
         CancellationToken ct)
     {
         using var transaction = await dbContext.BeginTransactionAsync(ct);
@@ -261,40 +240,31 @@ public class TopicsService(IApplicationDbContext dbContext,
         {
             logger.LogDebug("Updating topic with ID: {Id}", id);
 
-            // Валидация входных данных
-            ValidateUpdateRequest(topicRequestDto);
+            ValidateUpdateRequest(dto);
 
-            // Создаем TopicId из Guid
-            var topicId = TopicId.Of(id);
+            TopicId topicId = TopicId.Of(id);
 
-            // Получаем сущность для изменения
             var topic = await dbContext.Topics
                 .Include(t => t.Location)
-                .FirstOrDefaultAsync(t => t.Id == topicId, ct);
+                .FirstAsync(t => t.Id == topicId, ct);
 
-            if (topic == null)
+            if (topic is null)
             {
                 logger.LogWarning("Topic with ID {Id} not found for update", id);
                 throw new NotFoundException($"Topic with ID {id} not found");
             }
 
-            // Создаем новый Location из DTO
-            var location = Location.Of(
-                topicRequestDto.Location.City,
-                topicRequestDto.Location.Street);
-
-            // Обновляем тему через доменный метод
             topic.Update(
-                topicRequestDto.Title,
-                topicRequestDto.EventStart,
-                topicRequestDto.Summary,
-                topicRequestDto.TopicType,
-                location);
+                dto.Title,
+                dto.EventStart,
+                dto.Summary,
+                dto.TopicType,
+                Location.Of(
+                dto.Location.City,
+                dto.Location.Street)
+            );
 
-            // Помечаем сущность как измененную
             dbContext.Topics.Update(topic);
-
-            // Сохраняем изменения
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
@@ -367,32 +337,11 @@ public class TopicsService(IApplicationDbContext dbContext,
         }
     }
 
-    /// <summary>
-    /// Ручной маппинг топика
-    /// </summary>
-    /// <param name="topic"></param>
-    /// <returns></returns>
-    //private static TopicResponseDto MapToDto(Topic topic)
-    //{
-    //    return new TopicResponseDto
-    //    (
-    //        topic.Id.Value,
-    //        topic.Title,
-    //        topic.Summary,
-    //        topic.TopicType,
-    //        topic.Location.City,
-    //        topic.Location.Street,
-    //        topic.EventStart
-    //        topic.CreatedAt,
-    //        topic.UpdatedAt,
-    //        topic.DeletedAt
-    //    );
-    //}
 
     /// <summary>
     /// Валидация запроса создания
     /// </summary>
-    private static void ValidateCreateRequest(CreateTopicRequestDto request)
+    private static void ValidateCreateRequest(CreateTopicDto request)
     {
         if (request == null)
             throw new ArgumentNullException(nameof(request));
@@ -419,7 +368,7 @@ public class TopicsService(IApplicationDbContext dbContext,
     /// <summary>
     /// Валидация запроса обновления
     /// </summary>
-    private static void ValidateUpdateRequest(UpdateTopicRequestDto request)
+    private static void ValidateUpdateRequest(UpdateTopicDto request)
     {
         if (request == null)
             throw new ArgumentNullException(nameof(request));
