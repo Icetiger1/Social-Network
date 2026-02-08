@@ -49,19 +49,17 @@ public class TopicIdConfiguration : IEntityTypeConfiguration<Topic>
                 .HasColumnName("Street");
         });
 
-        // Теневые свойства для аудита (если не в доменной модели)
-        builder.Property<DateTime>("CreatedAt")
+
+        builder.Property<DateTimeOffset>("CreatedAt")
             .IsRequired();
-
-        builder.Property<DateTime?>("UpdatedAt");
-
-        builder.Property<DateTime?>("DeletedAt");
+        builder.Property<DateTimeOffset?>("UpdatedAt");
+        builder.Property<DateTimeOffset?>("DeletedAt");
 
         // Индексы
         builder.HasIndex(t => t.CreatedAt);
         builder.HasIndex(t => t.DeletedAt);
 
         // Фильтр для мягкого удаления
-        builder.HasQueryFilter(t => t.DeletedAt == null);
+        builder.HasQueryFilter(t => !t.IsDeleted);
     }
 }

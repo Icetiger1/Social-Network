@@ -63,10 +63,6 @@ public class Topic : Entity<TopicId>
         get => _location;
         private set => _location = value ?? throw new ArgumentNullException(nameof(Location));
     }
-
-    public DateTime CreatedAt { get; private set; }
-    public DateTime? UpdatedAt { get; private set; }
-    public DateTime? DeletedAt { get; private set; }
  
 
     // Приватный конструктор для EF Core
@@ -87,7 +83,7 @@ public class Topic : Entity<TopicId>
             Summary = summary,
             TopicType = topicType,
             Location = location,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow
         };
 
         return topic;
@@ -108,11 +104,12 @@ public class Topic : Entity<TopicId>
         Summary = summary ?? Summary;
         TopicType = topicType ?? TopicType;
         Location = location ?? Location;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTimeOffset.UtcNow;
     }
 
     public void MarkAsDeleted()
     {
-        DeletedAt = DateTime.UtcNow; 
+        IsDeleted = true;
+        DeletedAt = DateTimeOffset.UtcNow; 
     }
 }

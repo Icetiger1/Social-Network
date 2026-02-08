@@ -14,8 +14,8 @@ public record TopicResponseDto(
     string City,
     string Street,
     DateTime? EventStart,
-    DateTime CreatedAt,
-    DateTime? UpdatedAt,
-    DateTime? DeletedAt
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? UpdatedAt,
+    DateTimeOffset? DeletedAt
     );
 

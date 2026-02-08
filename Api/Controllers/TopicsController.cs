@@ -24,7 +24,6 @@ public class TopicsController(ITopicsService topicsService)
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
-        // Валидация параметров
         if (pageNumber < 1)
         {
             ModelState.AddModelError(nameof(pageNumber), "Page number must be greater than 0");
@@ -83,11 +82,6 @@ public class TopicsController(ITopicsService topicsService)
             var result = await topicsService.CreateTopicAsync(dto, ct);
 
             return Ok(result);
-
-            //return CreatedAtAction(
-            //    nameof(GetTopic),
-            //    new { id = result.Id },
-            //    result);
         }
         catch (DomainException ex)
         {
@@ -135,7 +129,11 @@ public class TopicsController(ITopicsService topicsService)
         }
         catch (NotFoundException ex)
         {
-            return NotFound(new { error = ex.Message });
+            return Problem(
+                title: "Failed to update topic", 
+                detail: ex.Message, 
+                statusCode: StatusCodes.Status404NotFound 
+            );
         }
         catch (DomainException ex)
         {
@@ -175,7 +173,11 @@ public class TopicsController(ITopicsService topicsService)
         }
         catch (NotFoundException ex)
         {
-            return NotFound(new { error = ex.Message });
+            return Problem(
+                title: "Failed to update topic",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status404NotFound
+            );
         }
         catch (OperationCanceledException)
         {

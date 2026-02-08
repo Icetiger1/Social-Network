@@ -27,8 +27,6 @@ public class TopicsService(IApplicationDbContext dbContext,
 
         try
         {
-            logger.LogDebug("Creating new topic with title: {Title}", topicRequestDto.Title);
-
             ValidateCreateRequest(topicRequestDto);
 
             Location location = Location.Of(
@@ -49,26 +47,21 @@ public class TopicsService(IApplicationDbContext dbContext,
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
-            logger.LogInformation("Topic created successfully with ID: {Id}", topicId.Value);
-
             return newTopic.ToTopicResponseDto();
         }
         catch (OperationCanceledException)
         {
             await transaction.RollbackAsync(ct);
-            logger.LogInformation("CreateTopicAsync operation was cancelled");
             throw;
         }
         catch (DomainException ex)
         {
             await transaction.RollbackAsync(ct);
-            logger.LogWarning("Domain validation failed for topic creation: {Message}", ex.Message);
             throw;
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync(ct);
-            logger.LogError(ex, "Error occurred while creating topic");
             throw new ApplicationException("Failed to create topic", ex);
         }
     }
@@ -86,17 +79,14 @@ public class TopicsService(IApplicationDbContext dbContext,
 
         try
         {
-            logger.LogDebug("Deleting topic with ID: {Id}", id);
-
             TopicId topicId = TopicId.Of(id);
 
             var topic = await dbContext.Topics
                 .FirstOrDefaultAsync(t => t.Id == topicId, ct);
 
-            if (topic == null)
+            if (topic is null || topic.IsDeleted)
             {
-                logger.LogWarning("Topic with ID {Id} not found for deletion", id);
-                throw new NotFoundException($"Topic with ID {id} not found");
+                throw new TopicNotFoundException(id);
             }
 
             topic.MarkAsDeleted();
@@ -104,19 +94,15 @@ public class TopicsService(IApplicationDbContext dbContext,
             dbContext.Topics.Update(topic);
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
-
-            logger.LogInformation("Topic with ID {Id} marked as deleted", id);
         }
         catch (DomainException ex) when (ex.Message.Contains("TopicId не может быть пустым"))
         {
             await transaction.RollbackAsync(ct);
-            logger.LogWarning("Invalid TopicId for deletion: {Id}", id);
             throw new NotFoundException($"Topic with ID {id} not found");
         }
         catch (OperationCanceledException)
         {
             await transaction.RollbackAsync(ct);
-            logger.LogInformation("DeleteTopicAsync operation was cancelled for ID: {Id}", id);
             throw;
         }
         catch (NotFoundException)
@@ -127,7 +113,6 @@ public class TopicsService(IApplicationDbContext dbContext,
         catch (Exception ex)
         {
             await transaction.RollbackAsync(ct);
-            logger.LogError(ex, "Error occurred while deleting topic with ID: {Id}", id);
             throw new ApplicationException($"Failed to delete topic with ID {id}", ex);
         }
     }
@@ -150,7 +135,7 @@ public class TopicsService(IApplicationDbContext dbContext,
                 .AsNoTracking()
                 .FirstOrDefaultAsync(t => t.Id == topicId, ct);
 
-            if (topic == null)
+            if (topic is null || topic.IsDeleted)
             {
                 throw new TopicNotFoundException(id);
             }
@@ -184,15 +169,11 @@ public class TopicsService(IApplicationDbContext dbContext,
     {
         try
         {
-            logger.LogInformation("Getting topics. Page: {Page}, Size: {Size}",
-            pageNumber, pageSize);
-
             if (pageNumber < 1) pageNumber = 1;
             if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
             var query = dbContext.Topics
                 .Include(t => t.Location)
-                .Where(t => t.DeletedAt == null)
                 .AsNoTracking();
 
             var totalCount = await query.CountAsync(ct);
@@ -204,19 +185,14 @@ public class TopicsService(IApplicationDbContext dbContext,
                 .Select(t => t.ToTopicResponseDto())          // Проецируем в DTO
                 .ToListAsync(ct);
 
-            logger.LogInformation("Retrieved {Count} topics out of {Total}, (includeDeleted: {IncludeDeleted})",
-                items.Count, totalCount, includeDeleted);
-
             return new PaginatedList<TopicResponseDto>(items, totalCount, pageNumber, pageSize);
         }
         catch  (OperationCanceledException)
         {
-            logger.LogInformation("GetTopicsAsync operation was cancelled");
             throw;
         }
         catch (Exception e)
         {
-            logger.LogError(e, "Error occurred while getting all topics");
             throw new ApplicationException("Failed to retrieve topics", e);
         }
     }
@@ -238,20 +214,17 @@ public class TopicsService(IApplicationDbContext dbContext,
 
         try
         {
-            logger.LogDebug("Updating topic with ID: {Id}", id);
-
             ValidateUpdateRequest(dto);
 
             TopicId topicId = TopicId.Of(id);
 
             var topic = await dbContext.Topics
                 .Include(t => t.Location)
-                .FirstAsync(t => t.Id == topicId, ct);
+                .FirstOrDefaultAsync(t => t.Id == topicId, ct);
 
-            if (topic is null)
+            if (topic is null || topic.IsDeleted)
             {
-                logger.LogWarning("Topic with ID {Id} not found for update", id);
-                throw new NotFoundException($"Topic with ID {id} not found");
+                throw new TopicNotFoundException(id);
             }
 
             topic.Update(
@@ -268,19 +241,16 @@ public class TopicsService(IApplicationDbContext dbContext,
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
 
-            logger.LogInformation("Topic with ID {Id} updated successfully", id);
             return topic.ToTopicResponseDto();
         }
         catch (DomainException ex) when (ex.Message.Contains("TopicId не может быть пустым"))
         {
             await transaction.RollbackAsync(ct);
-            logger.LogWarning("Invalid TopicId for update: {Id}", id);
             throw new NotFoundException($"Topic with ID {id} not found");
         }
         catch (OperationCanceledException)
         {
             await transaction.RollbackAsync(ct);
-            logger.LogInformation("UpdateTopicAsync operation was cancelled for ID: {Id}", id);
             throw;
         }
         catch (NotFoundException)
@@ -291,13 +261,11 @@ public class TopicsService(IApplicationDbContext dbContext,
         catch (DomainException ex)
         {
             await transaction.RollbackAsync(ct);
-            logger.LogWarning("Domain validation failed for topic update: {Message}", ex.Message);
             throw;
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync(ct);
-            logger.LogError(ex, "Error occurred while updating topic with ID: {Id}", id);
             throw new ApplicationException($"Failed to update topic with ID {id}", ex);
         }
     }
@@ -312,27 +280,21 @@ public class TopicsService(IApplicationDbContext dbContext,
     {
         try
         {
-            logger.LogDebug("Getting deleted topics");
-
             var deletedTopics = await dbContext.Topics
                 .Include(t => t.Location)
-                .Where(t => t.DeletedAt != null) 
+                .Where(t => t.IsDeleted) 
                 .OrderByDescending(t => t.CreatedAt)
                 .AsNoTracking()
                 .ToListAsync(ct);
-
-            logger.LogInformation("Retrieved {Count} deleted topics", deletedTopics.Count);
 
             return deletedTopics.ToTopicResponseDtoList();
         }
         catch (OperationCanceledException)
         {
-            logger.LogInformation("GetDeletedTopicsAsync operation was cancelled");
             throw;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error occurred while getting deleted topics");
             throw new ApplicationException("Failed to retrieve deleted topics", ex);
         }
     }
