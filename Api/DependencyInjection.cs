@@ -1,5 +1,4 @@
 using Api.Exceptions.Handler;
-using static System.Net.Mime.MediaTypeNames;
 
 namespace Api;
 
@@ -16,6 +15,16 @@ public static class DependencyInjection
         services.AddControllers();
         services.AddOpenApi();
 
+        services.AddCors(options =>
+        {
+            options.AddPolicy("react-policy", policy =>
+            {
+                policy.AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .WithOrigins("http://localhost:3000");
+            });
+        });
+
         return services;
     }
 
@@ -26,6 +35,8 @@ public static class DependencyInjection
     /// <returns></returns>
     public static WebApplication UseApiServices(this WebApplication app)
     {
+        app.UseCors("react-policy");
+
         if (app.Environment.IsDevelopment())
         {
             app.MapOpenApi();

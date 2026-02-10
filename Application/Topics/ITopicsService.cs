@@ -1,6 +1,3 @@
-using Application.Dtos;
-using Shared;
-
 namespace Application.Topics;
 
 public interface ITopicsService

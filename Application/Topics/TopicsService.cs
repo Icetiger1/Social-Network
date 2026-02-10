@@ -1,11 +1,6 @@
 using Application.Common;
 using Application.Data.DataBaseContext;
-using Application.Dtos;
-using Application.Extensions;
-using Domain.Exceptions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Shared;
 
 namespace Application.Topics;
 
@@ -14,33 +9,33 @@ public class TopicsService(IApplicationDbContext dbContext,
         IDateTimeProvider dateTimeProvider) : ITopicsService
 {
     /// <summary>
-    /// Создание топика       
+    /// РЎРѕР·РґР°РЅРёРµ С‚РѕРїРёРєР°      
     /// </summary>
-    /// <param name="topicRequestDto"></param>
+    /// <param name="dto"></param>
     /// <param name="ct"></param>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
     public async Task<TopicResponseDto> CreateTopicAsync(
-        CreateTopicDto topicRequestDto, CancellationToken ct)
+        CreateTopicDto dto, CancellationToken ct)
     {
         using var transaction = await dbContext.BeginTransactionAsync(ct);
 
         try
         {
-            ValidateCreateRequest(topicRequestDto);
+            ValidateTopicRequest(dto);
 
             Location location = Location.Of(
-                topicRequestDto.Location.City,
-                topicRequestDto.Location.Street);
+                dto.Location.City,
+                dto.Location.Street);
 
             TopicId topicId = TopicId.New();
 
             Topic newTopic = Topic.Create(
                 topicId,
-                topicRequestDto.Title,
-                topicRequestDto.EventStart,
-                topicRequestDto.Summary,
-                topicRequestDto.TopicType,
+                dto.Title,
+                dto.EventStart,
+                dto.Summary,
+                dto.TopicType,
                 location);
 
             await dbContext.Topics.AddAsync(newTopic, ct);
@@ -54,7 +49,7 @@ public class TopicsService(IApplicationDbContext dbContext,
             await transaction.RollbackAsync(ct);
             throw;
         }
-        catch (DomainException ex)
+        catch (DomainException)
         {
             await transaction.RollbackAsync(ct);
             throw;
@@ -67,7 +62,7 @@ public class TopicsService(IApplicationDbContext dbContext,
     }
 
     /// <summary>
-    /// Удаление топика
+    /// РЈРґР°Р»РµРЅРёРµ С‚РѕРїРёРєР°
     /// </summary>
     /// <param name="id"></param>
     /// <param name="ct"></param>
@@ -95,7 +90,7 @@ public class TopicsService(IApplicationDbContext dbContext,
             await dbContext.SaveChangesAsync(ct);
             await transaction.CommitAsync(ct);
         }
-        catch (DomainException ex) when (ex.Message.Contains("TopicId не может быть пустым"))
+        catch (DomainException ex) when (ex.Message.Contains("TopicId пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ"))
         {
             await transaction.RollbackAsync(ct);
             throw new NotFoundException($"Topic with ID {id} not found");
@@ -118,7 +113,7 @@ public class TopicsService(IApplicationDbContext dbContext,
     }
 
     /// <summary>
-    /// Получение 1 топика
+    /// РџРѕР»СѓС‡РёС‚СЊ С‚РѕРїРёРє РїРѕ id
     /// </summary>
     /// <param name="id"></param>
     /// <param name="ct"></param>
@@ -157,7 +152,7 @@ public class TopicsService(IApplicationDbContext dbContext,
     }
 
     /// <summary>
-    /// Получение нескольких топиков
+    /// РџРѕР»СѓС‡РµРЅРёРµ РІСЃРµС… С‚РѕРїРёРєРѕРІ
     /// </summary>
     /// <param name="ct"></param>
     /// <returns></returns>
@@ -180,9 +175,9 @@ public class TopicsService(IApplicationDbContext dbContext,
 
             var items = await query
                 .OrderByDescending(t => t.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize) // Пропускаем предыдущие страницы
-                .Take(pageSize)                    // Берем только нужное количество
-                .Select(t => t.ToTopicResponseDto())          // Проецируем в DTO
+                .Skip((pageNumber - 1) * pageSize) // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                .Take(pageSize)                    // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                .Select(t => t.ToTopicResponseDto())          // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ DTO
                 .ToListAsync(ct);
 
             return new PaginatedList<TopicResponseDto>(items, totalCount, pageNumber, pageSize);
@@ -198,10 +193,10 @@ public class TopicsService(IApplicationDbContext dbContext,
     }
 
     /// <summary>
-    /// обновление топиков
+    /// РћР±РЅРѕРІР»РµРЅРёРµ С‚РѕРїРёРєРѕРІ
     /// </summary>
     /// <param name="id"></param>
-    /// <param name="topicRequestDto"></param>
+    /// <param name="dto"></param>
     /// <param name="ct"></param>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
@@ -214,7 +209,7 @@ public class TopicsService(IApplicationDbContext dbContext,
 
         try
         {
-            ValidateUpdateRequest(dto);
+            ValidateTopicRequest(dto);
 
             TopicId topicId = TopicId.Of(id);
 
@@ -243,7 +238,7 @@ public class TopicsService(IApplicationDbContext dbContext,
 
             return topic.ToTopicResponseDto();
         }
-        catch (DomainException ex) when (ex.Message.Contains("TopicId не может быть пустым"))
+        catch (DomainException ex) when (ex.Message.Contains("TopicId пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ"))
         {
             await transaction.RollbackAsync(ct);
             throw new NotFoundException($"Topic with ID {id} not found");
@@ -258,7 +253,7 @@ public class TopicsService(IApplicationDbContext dbContext,
             await transaction.RollbackAsync(ct);
             throw;
         }
-        catch (DomainException ex)
+        catch (DomainException)
         {
             await transaction.RollbackAsync(ct);
             throw;
@@ -271,7 +266,7 @@ public class TopicsService(IApplicationDbContext dbContext,
     }
 
     /// <summary>
-    /// получение удаленных топиков
+    /// РџРѕР»СѓС‡РµРЅРёРµ СѓРґР°Р»РµРЅРЅС‹С… С‚РѕРїРёРєРѕРІ
     /// </summary>
     /// <param name="ct"></param>
     /// <returns></returns>
@@ -299,58 +294,30 @@ public class TopicsService(IApplicationDbContext dbContext,
         }
     }
 
-
     /// <summary>
-    /// Валидация запроса создания
+    /// Р’Р°Р»РёРґР°С†РёСЏ С‚РѕРїРёРєР°
     /// </summary>
-    private static void ValidateCreateRequest(CreateTopicDto request)
+    private static void ValidateTopicRequest(ITopicRequestDto dto)
     {
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
+        if (dto == null)
+            throw new ArgumentNullException(nameof(dto));
 
-        if (string.IsNullOrWhiteSpace(request.Title))
+        if (string.IsNullOrWhiteSpace(dto.Title))
             throw new DomainException("Title is required");
 
-        if (string.IsNullOrWhiteSpace(request.Summary))
+        if (string.IsNullOrWhiteSpace(dto.Summary))
             throw new DomainException("Summary is required");
 
-        if (string.IsNullOrWhiteSpace(request.TopicType))
+        if (string.IsNullOrWhiteSpace(dto.TopicType))
             throw new DomainException("TopicType is required");
 
-        if (request.Location == null)
+        if (dto.Location == null)
             throw new DomainException("Location is required");
 
-        if (string.IsNullOrWhiteSpace(request.Location.City))
+        if (string.IsNullOrWhiteSpace(dto.Location.City))
             throw new DomainException("City is required");
 
-        if (string.IsNullOrWhiteSpace(request.Location.Street))
-            throw new DomainException("Street is required");
-    }
-
-    /// <summary>
-    /// Валидация запроса обновления
-    /// </summary>
-    private static void ValidateUpdateRequest(UpdateTopicDto request)
-    {
-        if (request == null)
-            throw new ArgumentNullException(nameof(request));
-
-        if (string.IsNullOrWhiteSpace(request.Title))
-            throw new DomainException("Title is required");
-
-        if (string.IsNullOrWhiteSpace(request.Summary))
-            throw new DomainException("Summary is required");
-
-        if (string.IsNullOrWhiteSpace(request.TopicType))
-            throw new DomainException("TopicType is required");
-
-        if (request.Location == null)
-            throw new DomainException("Location is required");
-
-        if (string.IsNullOrWhiteSpace(request.Location.City))
-            throw new DomainException("City is required");
-
-        if (string.IsNullOrWhiteSpace(request.Location.Street))
+        if (string.IsNullOrWhiteSpace(dto.Location.Street))
             throw new DomainException("Street is required");
     }
 

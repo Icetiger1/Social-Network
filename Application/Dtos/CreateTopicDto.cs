@@ -13,4 +13,4 @@ public record CreateTopicDto(
     string TopicType,
     LocationDto Location,
     DateTime? EventStart
-);
+) : ITopicRequestDto;

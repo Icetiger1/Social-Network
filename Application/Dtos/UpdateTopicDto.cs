@@ -12,4 +12,4 @@ public record UpdateTopicDto(
     string TopicType,
     LocationDto Location,
     DateTime? EventStart
-);
+) : ITopicRequestDto;

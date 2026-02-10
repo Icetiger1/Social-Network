@@ -1,10 +1,4 @@
-using Application.Dtos;
-using Application.Topics;
-using Domain.Exceptions;
-using Domain.Models;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Shared;
 
 namespace API.Controllers;
 
@@ -13,7 +7,14 @@ namespace API.Controllers;
 public class TopicsController(ITopicsService topicsService)
     : ControllerBase
 {
-
+    /// <summary>
+    /// Получить все темы
+    /// </summary>
+    /// <param name="pageNumber"></param>
+    /// <param name="pageSize"></param>
+    /// <param name="includeDeleted"></param>
+    /// <param name="ct"></param>
+    /// <returns></returns>
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedList<TopicResponseDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -24,20 +25,34 @@ public class TopicsController(ITopicsService topicsService)
         [FromQuery] bool includeDeleted = false,
         CancellationToken ct = default)
     {
-        if (pageNumber < 1)
+        try
         {
-            ModelState.AddModelError(nameof(pageNumber), "Page number must be greater than 0");
-            return ValidationProblem(ModelState);
-        }
+            if (pageNumber < 1)
+            {
+                ModelState.AddModelError(nameof(pageNumber), "Номер страницы должен быть больше чем 0");
+                return ValidationProblem(ModelState);
+            }
 
-        if (pageSize < 1 || pageSize > 100)
+            if (pageSize < 1 || pageSize > 100)
+            {
+                ModelState.AddModelError(nameof(pageSize), "Количество страниц должно быть от 1 до 100");
+                return ValidationProblem(ModelState);
+            }
+
+            var result = await topicsService.GetTopicsAsync(pageNumber, pageSize, includeDeleted, ct);
+            return Ok(result);
+        }
+        catch (OperationCanceledException)
         {
-            ModelState.AddModelError(nameof(pageSize), "Page size must be between 1 and 100");
-            return ValidationProblem(ModelState);
+            return StatusCode(499);
         }
-
-        var result = await topicsService.GetTopicsAsync(pageNumber, pageSize, includeDeleted, ct);
-        return Ok(result);
+        catch (Exception ex)
+        {
+            return Problem(
+                title: "Ошибка получения топиков",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
     }
 
     /// <summary>
@@ -61,7 +76,7 @@ public class TopicsController(ITopicsService topicsService)
     /// <summary>
     /// Создать новую тему
     /// </summary>
-    /// <param name="request">Данные для создания темы</param>
+    /// <param name="dto">Данные для создания темы</param>
     /// <param name="ct">Токен отмены</param>
     /// <returns>Созданная тема</returns>
     [HttpPost]
@@ -83,10 +98,6 @@ public class TopicsController(ITopicsService topicsService)
 
             return Ok(result);
         }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
         catch (OperationCanceledException)
         {
             return StatusCode(499);
@@ -94,7 +105,7 @@ public class TopicsController(ITopicsService topicsService)
         catch (Exception ex)
         {
             return Problem(
-                title: "Failed to create topic",
+                title: "Ошибка создания топика",
                 detail: ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError);
         }
@@ -130,14 +141,10 @@ public class TopicsController(ITopicsService topicsService)
         catch (NotFoundException ex)
         {
             return Problem(
-                title: "Failed to update topic", 
+                title: "Ошибка обновления топика", 
                 detail: ex.Message, 
                 statusCode: StatusCodes.Status404NotFound 
             );
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
         }
         catch (OperationCanceledException)
         {
@@ -146,14 +153,14 @@ public class TopicsController(ITopicsService topicsService)
         catch (Exception ex)
         {
             return Problem(
-                title: "Failed to update topic",
+                title: "Ошибка обновления топика",
                 detail: ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError);
         }
     }
 
     /// <summary>
-    /// Удалить тему
+    /// Удалить тему (мягкое удаление)
     /// </summary>
     /// <param name="id">Идентификатор темы</param>
     /// <param name="ct">Токен отмены</param>
@@ -174,7 +181,7 @@ public class TopicsController(ITopicsService topicsService)
         catch (NotFoundException ex)
         {
             return Problem(
-                title: "Failed to update topic",
+                title: "Ошибка удаления топика",
                 detail: ex.Message,
                 statusCode: StatusCodes.Status404NotFound
             );
@@ -186,7 +193,7 @@ public class TopicsController(ITopicsService topicsService)
         catch (Exception ex)
         {
             return Problem(
-                title: "Failed to delete topic",
+                title: "Ошибка удаления топика",
                 detail: ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError);
         }
