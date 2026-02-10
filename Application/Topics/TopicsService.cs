@@ -175,9 +175,9 @@ public class TopicsService(IApplicationDbContext dbContext,
 
             var items = await query
                 .OrderByDescending(t => t.CreatedAt)
-                .Skip((pageNumber - 1) * pageSize) // ���������� ���������� ��������
-                .Take(pageSize)                    // ����� ������ ������ ����������
-                .Select(t => t.ToTopicResponseDto())          // ���������� � DTO
+                .Skip((pageNumber - 1) * pageSize) 
+                .Take(pageSize)                    
+                .Select(t => t.ToTopicResponseDto())         
                 .ToListAsync(ct);
 
             return new PaginatedList<TopicResponseDto>(items, totalCount, pageNumber, pageSize);

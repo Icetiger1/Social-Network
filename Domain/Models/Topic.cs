@@ -64,8 +64,6 @@ public class Topic : Entity<TopicId>
         private set => _location = value ?? throw new ArgumentNullException(nameof(Location));
     }
  
-
-    // Приватный конструктор для EF Core
     private Topic() { }
 
     /// <summary>
